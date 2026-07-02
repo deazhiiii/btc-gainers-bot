@@ -1,3 +1,4 @@
+import os
 import requests
 from flask import Flask, jsonify, render_template_string
 
@@ -230,9 +231,6 @@ function setMkt(m,b){mkt=m;clrTool(['m-perp','m-spot'],b,'ag');renderTable();}
 function setThr(v){minG=parseFloat(v);document.getElementById('thV').textContent=v+'%';renderTable();}
 
 function getPerformanceSet(){
-  // SINGLE SOURCE OF TRUTH for which coins are "in the Performance section".
-  // Both the Performance tab and the Market Cap tab call this same function
-  // to get their coin set — they only differ in how they sort it afterward.
   var q=document.getElementById('srch').value.toUpperCase().trim();
   var set=coins.filter(function(c){return !q||c.symbol.toUpperCase().includes(q)||c.name.toUpperCase().includes(q);});
   if(view==='watchlist') set=set.filter(function(c){return wl.includes(c.symbol.toUpperCase());});
@@ -242,24 +240,17 @@ function getPerformanceSet(){
 
   set.sort(function(a,b){return view==='losers'?ch(a,tf)-ch(b,tf):ch(b,tf)-ch(a,tf);});
   if(view!=='watchlist') set=set.slice(0,80);
-  return set; // <-- this exact array of coins IS "the Performance section"
+  return set;
 }
 
 function renderTable(){
   if(!coins.length)return;
 
-  // Always start from the fixed Performance set. Never re-filter coins
-  // independently for the Market Cap tab — only re-order is allowed.
   var list=getPerformanceSet();
 
   if(srt==='mcap'){
     list=list.slice().sort(function(a,b){return (a.market_cap_rank||999)-(b.market_cap_rank||999);});
   }
-  // if srt==='perf', list is already in performance order from getPerformanceSet()
-
-  // NOTE: watchlist pinning is intentionally NOT applied here anymore.
-  // Pinning would re-shuffle the order and break "sorted purely by market cap".
-  // If you want pinning back, only do it when srt==='perf'.
 
   var maxA=Math.max.apply(null,list.map(function(c){return Math.abs(ch(c,tf));}));
   if(maxA<0.01)maxA=0.01;
@@ -351,12 +342,7 @@ def api_coins():
 
 
 if __name__ == "__main__":
-    print()
-    print("  +----------------------------------+")
-    print("  |   BTC GAINERS SCANNER  v2.0      |")
-    print("  +----------------------------------+")
-    print("  |  Open ->  http://localhost:5002  |")
-    print("  |  Stop ->  Ctrl+C                |")
-    print("  +----------------------------------+")
-    print()
-    app.run(debug=False, port=5002)
+    # Render (and most hosts) assign the port dynamically via the PORT
+    # environment variable. Falls back to 5002 for local testing.
+    port = int(os.environ.get("PORT", 5002))
+    app.run(host="0.0.0.0", port=port)
